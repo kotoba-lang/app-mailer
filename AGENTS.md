@@ -4,7 +4,7 @@ mailer.etzhayyim.com — DID-based email platform。`performerType: system`。
 
 ## Status: VENDOR-RETAINED (2026-05-30)
 
-このアプリは 2026-05-21 に etzhayyim へ migrate されたが、root `CLAUDE.md`
+このアプリは 2026-05-21 に etzhayyim へ migrate されたが、root `AGENTS.md`
 §etzhayyim Agent / Email Policy (2026-05-28) で **mailer.etzhayyim.com = repo-wide
 primary email platform** と再定義された。よって vendor 側 (`etzhayyim`) でも
 本ソースを SSoT として保持する (旧 `DEPRECATED.md` は除去)。etzhayyim 側にも
