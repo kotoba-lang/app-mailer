@@ -1,0 +1,71 @@
+(ns mailer.route
+  "mailer 経路判定コア — itonami dapp bundle（pure, :effects #{}）。
+
+  XRPC/API の経路分岐の判定（正本:
+  appview/mailer-mcp-component/svelte/src/lib/server/mailer-proxy.ts）:
+
+  - `ai.etzhayyim.apps.mailer.` プレフィックス **かつ** GET/POST のときだけ
+    mailer 経路。それ以外（別 NSID・別メソッド）は PDS 経路へ。
+  - health / listBindings は direct read（dispatcher を通さない）。
+  - POST body が JSON で無い場合は **400 InvalidJson**（fail closed）。
+    空 body は {}。query は body に無いキーだけを補う（body 優先）。
+  - **fallback は持たない**: dispatcher は公衆ホストのみ。平文の dev IP への
+    フォールバックは撤去済み（fallback-ok はこれを fail closed で判定）。
+
+  admission の戻り: 0 = dispatcher / 1 = PDS 経路 / 2 = direct read
+    / 3 = reject（400 InvalidJson）
+  fallback-ok: 1 = 平文フォールバック無し（規則どおり）
+  query-merge: 1 = query を採用（body に無い）/ 0 = body を維持
+
+  実行 host はスカラーのみ = KIR v3 / i64/direct ABI（kernel/selfhost 両対応）。
+
+  テストはゼロ引数 test-*、戻り 1/0:
+  <amu> test aiueos/mailer_route.cljk"
+  (:export [main admission fallback-ok query-merge
+            test-dispatcher test-pds test-direct test-invalid
+            test-fallback test-merge test-fail-closed]))
+
+(defn main [] :i64
+  0)
+
+(defn admission [prefix-and-method-ok :i64 is-direct-read :i64 json-valid :i64] :i64
+  (if (= prefix-and-method-ok 0)
+    1
+    (if (= json-valid 0)
+      3
+      (if (= is-direct-read 1) 2 0))))
+
+(defn fallback-ok [n-plaintext-hosts :i64] :i64
+  (if (= n-plaintext-hosts 0) 1 0))
+
+(defn query-merge [key-in-body :i64] :i64
+  (if (= key-in-body 1) 0 1))
+
+;; --- tests（戻り 1 = pass） ------------------------------------------------
+
+(defn test-dispatcher [] :i64
+  (if (= (admission 1 0 1) 0) 1 0))
+
+(defn test-pds [] :i64
+  ;; プレフィックス外・別メソッドは PDS 経路
+  (if (= (+ (admission 0 0 1) (admission 0 1 1)) 2) 1 0))
+
+(defn test-direct [] :i64
+  ;; health / listBindings は direct read
+  (if (= (admission 1 1 1) 2) 1 0))
+
+(defn test-invalid [] :i64
+  ;; JSON 不正は 400（direct read より優先して拒否）
+  (if (= (+ (admission 1 0 0) (admission 1 1 0)) 6) 1 0))
+
+(defn test-fallback [] :i64
+  ;; 平文 dev IP への fallback は禁止（fail closed）
+  (if (= (+ (fallback-ok 0) (fallback-ok 1) (fallback-ok 2)) 1) 1 0))
+
+(defn test-merge [] :i64
+  ;; body 優先、query は無いキーだけ補う
+  (if (= (+ (query-merge 1) (query-merge 0)) 1) 1 0))
+
+(defn test-fail-closed [] :i64
+  ;; ルート判定: dispatcher / PDS / direct / reject は排他
+  (if (= (+ (admission 1 0 1) (admission 0 0 1) (admission 1 1 1) (admission 1 0 0)) 6) 1 0))
