@@ -1,0 +1,26 @@
+(ns mailer.route-parity-test
+  "aiueos/mailer_route.cljk（判定コア）と正本 mailer-proxy.ts の規則の parity。
+  TS モジュールは $lib / @sveltejs/kit 別名依存で kbb/node 直接実行できない
+  ため、**ソース一致検査**（正本の規則が変化したら落ちる）で照合する。
+  実行 parity が要る層は mailer.test.ts（正本の vitest）が担う。"
+  (:require [clojure.test :refer [deftest is testing]]
+            [clojure.string :as str]
+            ["fs" :as fs]
+            ["path" :as path]))
+
+(def src
+  (fs/readFileSync
+   (path/join "appview" "mailer-mcp-component" "svelte" "src" "lib" "server" "mailer-proxy.ts")
+   "utf8"))
+
+(deftest source-rules-match-guest
+  (testing "guest test-pds: NSID プレフィックスは ai.etzhayyim.apps.mailer."
+    (is (str/includes? src "ai.etzhayyim.apps.mailer.")))
+  (testing "guest test-dispatcher: GET/POST のときだけ mailer 経路"
+    (is (str/includes? src "request.method === 'POST' || request.method === 'GET'")))
+  (testing "guest test-invalid: JSON 不正は 400 InvalidJson"
+    (is (str/includes? src "{ error: 'InvalidJson' }, 400")))
+  (testing "guest test-fallback: 平文 fallback は空（禁止）"
+    (is (str/includes? src "DISPATCHER_FALLBACK_URLS: string[] = [];")))
+  (testing "guest test-merge: query は body に無いキーだけ補う"
+    (is (str/includes? src "if (!(key in body))"))))

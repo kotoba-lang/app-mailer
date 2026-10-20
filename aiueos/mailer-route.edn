@@ -1,0 +1,18 @@
+;; app-mailer — itonami（dapp）の aiueos アプリ記述子（notes.edn 形）。
+;; 判定コアは aiueos/mailer_route.cljk（XRPC/API の経路分岐・fallback 禁止）。
+;; 正本は appview/mailer-mcp-component/svelte/src/lib/server/mailer-proxy.ts。
+;; pure（:effects #{}）。
+{:aiueos/component :app/mailer-route
+ :aiueos/kind :app
+ :aiueos/trust :untrusted
+ :aiueos/source "mailer_route.cljk"
+ :aiueos/wasm "mailer_route.wasm"
+ :aiueos/entry "main"
+ :aiueos/args []
+ :aiueos/imports #{}
+ :aiueos/exports #{:app/main
+                   :app/admission
+                   :app/fallback-ok
+                   :app/query-merge}
+ :aiueos/effects #{}
+ :aiueos/limits {:memory-pages 16 :fuel 5000000}}
